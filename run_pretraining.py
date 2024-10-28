@@ -105,6 +105,10 @@ flags.DEFINE_integer(
     "num_tpu_cores", 8,
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
+flags.DEFINE_integer(
+    "num_cpu_cores", 8,
+    "Only used if `use_tpu` is False. Total number of CPU cores to use.")
+
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,
@@ -427,6 +431,12 @@ def main(_):
         FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+
+  if FLAGS.num_tpu_cores < 1:
+    num_shards = FLAGS.num_cpu_cores
+  else:
+    num_shards = FLAGS.num_tpu_cores
+
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       master=FLAGS.master,
@@ -434,7 +444,7 @@ def main(_):
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
       tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
-          num_shards=FLAGS.num_tpu_cores,
+          num_shards=num_shards,
           per_host_input_for_training=is_per_host))
 
   model_fn = model_fn_builder(
